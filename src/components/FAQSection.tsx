@@ -34,6 +34,10 @@ export const FAQSection = () => {
   const [email, setEmail] = useState("");
   const [responseText, setResponseText] = useState<{[key: number]: string}>({});
   const [showResponseForm, setShowResponseForm] = useState<number | null>(null);
+  
+  // Track liked items by user (using a simple userId simulation)
+  const [likedFAQs, setLikedFAQs] = useState<Set<number>>(new Set());
+  const [likedResponses, setLikedResponses] = useState<Set<string>>(new Set()); // Using "faqId-responseId" format
 
   const initialFAQs: FAQ[] = [
     {
@@ -126,21 +130,46 @@ export const FAQSection = () => {
       faq.answer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       faq.category.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a, b) => b.likes - a.likes); // Tri par nombre de likes décroissant
+    .sort((a, b) => b.likes - a.likes);
 
   const categories = [...new Set(faqs.map(faq => faq.category))];
 
   const handleLikeFAQ = (faqId: number) => {
+    const isAlreadyLiked = likedFAQs.has(faqId);
+    
+    setLikedFAQs(prev => {
+      const newSet = new Set(prev);
+      if (isAlreadyLiked) {
+        newSet.delete(faqId);
+      } else {
+        newSet.add(faqId);
+      }
+      return newSet;
+    });
+
     setFaqs(prevFaqs => 
       prevFaqs.map(faq => 
         faq.id === faqId 
-          ? { ...faq, likes: faq.likes + 1 }
+          ? { ...faq, likes: isAlreadyLiked ? faq.likes - 1 : faq.likes + 1 }
           : faq
       )
     );
   };
 
   const handleLikeResponse = (faqId: number, responseId: number) => {
+    const responseKey = `${faqId}-${responseId}`;
+    const isAlreadyLiked = likedResponses.has(responseKey);
+    
+    setLikedResponses(prev => {
+      const newSet = new Set(prev);
+      if (isAlreadyLiked) {
+        newSet.delete(responseKey);
+      } else {
+        newSet.add(responseKey);
+      }
+      return newSet;
+    });
+
     setFaqs(prevFaqs => 
       prevFaqs.map(faq => 
         faq.id === faqId 
@@ -148,7 +177,7 @@ export const FAQSection = () => {
               ...faq,
               responses: faq.responses.map(response =>
                 response.id === responseId
-                  ? { ...response, likes: response.likes + 1 }
+                  ? { ...response, likes: isAlreadyLiked ? response.likes - 1 : response.likes + 1 }
                   : response
               )
             }
@@ -164,7 +193,7 @@ export const FAQSection = () => {
     const newResponse: Response = {
       id: Date.now(),
       text: text.trim(),
-      isAdmin: false, // En réalité, vous voudriez vérifier si l'utilisateur est admin
+      isAdmin: false,
       likes: 0,
       timestamp: new Date()
     };
@@ -302,7 +331,7 @@ export const FAQSection = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
-                          variant="outline"
+                          variant={likedFAQs.has(faq.id) ? "default" : "outline"}
                           size="sm"
                           onClick={() => handleLikeFAQ(faq.id)}
                           className="flex items-center gap-1"
@@ -328,37 +357,42 @@ export const FAQSection = () => {
                         <h4 className="font-medium text-sm text-muted-foreground">Réponses de la communauté:</h4>
                         {faq.responses
                           .sort((a, b) => b.likes - a.likes)
-                          .map((response) => (
-                          <div key={response.id} className="bg-gray-50 p-3 rounded-lg">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <p className="text-sm mb-2">{response.text}</p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <User className="w-3 h-3" />
-                                  {response.isAdmin ? (
-                                    <span className="flex items-center gap-1">
-                                      <Shield className="w-3 h-3" />
-                                      Équipe WebPro
-                                    </span>
-                                  ) : (
-                                    "Membre de la communauté"
-                                  )}
-                                  <span>•</span>
-                                  <span>{response.timestamp.toLocaleDateString()}</span>
+                          .map((response) => {
+                            const responseKey = `${faq.id}-${response.id}`;
+                            const isLiked = likedResponses.has(responseKey);
+                            
+                            return (
+                              <div key={response.id} className="bg-gray-50 p-3 rounded-lg">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <p className="text-sm mb-2">{response.text}</p>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <User className="w-3 h-3" />
+                                      {response.isAdmin ? (
+                                        <span className="flex items-center gap-1">
+                                          <Shield className="w-3 h-3" />
+                                          Équipe WebPro
+                                        </span>
+                                      ) : (
+                                        "Membre de la communauté"
+                                      )}
+                                      <span>•</span>
+                                      <span>{response.timestamp.toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    variant={isLiked ? "default" : "ghost"}
+                                    size="sm"
+                                    onClick={() => handleLikeResponse(faq.id, response.id)}
+                                    className="flex items-center gap-1 text-xs"
+                                  >
+                                    <ThumbsUp className="w-3 h-3" />
+                                    {response.likes}
+                                  </Button>
                                 </div>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleLikeResponse(faq.id, response.id)}
-                                className="flex items-center gap-1 text-xs"
-                              >
-                                <ThumbsUp className="w-3 h-3" />
-                                {response.likes}
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
+                            );
+                          })}
                       </div>
                     )}
 
