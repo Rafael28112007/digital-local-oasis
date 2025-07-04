@@ -9,6 +9,13 @@ import { Separator } from "@/components/ui/separator";
 import { Search, ChevronDown, ChevronUp, Plus, Shield, MessageCircle, User } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
+interface FAQ {
+  question: string;
+  answer: string;
+  category: string;
+  isAdmin: boolean;
+}
+
 export const FAQSection = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
@@ -16,7 +23,7 @@ export const FAQSection = () => {
   const [wantNotifications, setWantNotifications] = useState(true);
   const [email, setEmail] = useState("");
 
-  const faqs = [
+  const initialFAQs: FAQ[] = [
     {
       question: "Combien de temps faut-il pour créer mon site web ?",
       answer: "En moyenne, nous créons votre site web en 7 à 14 jours ouvrés selon la complexité de votre projet. Les sites simples peuvent être livrés en une semaine, tandis que les projets e-commerce prennent généralement 2 semaines.",
@@ -67,6 +74,8 @@ export const FAQSection = () => {
     }
   ];
 
+  const [faqs, setFaqs] = useState<FAQ[]>(initialFAQs);
+
   const filteredFAQs = faqs.filter(faq =>
     faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
     faq.answer.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,12 +92,22 @@ export const FAQSection = () => {
     console.log("Notifications demandées:", wantNotifications);
     console.log("Email:", email);
     
+    // Ajouter la nouvelle question à la liste
+    const newFAQ: FAQ = {
+      question: newQuestion,
+      answer: "Cette question est en attente de réponse. Nous vous répondrons dans les plus brefs délais.",
+      category: "En attente",
+      isAdmin: false
+    };
+    
+    setFaqs(prevFaqs => [newFAQ, ...prevFaqs]);
+    
     // Reset form
     setNewQuestion("");
     setEmail("");
     setWantNotifications(true);
     
-    alert("Votre question a été envoyée ! Nous vous répondrons dans les plus brefs délais.");
+    alert("Votre question a été ajoutée ! Elle apparaît maintenant dans la liste des questions.");
   };
 
   return (
@@ -149,6 +168,11 @@ export const FAQSection = () => {
                         <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                           <Shield className="w-3 h-3 mr-1" />
                           Admin
+                        </Badge>
+                      )}
+                      {faq.category === "En attente" && (
+                        <Badge variant="outline" className="bg-orange-100 text-orange-800">
+                          En attente
                         </Badge>
                       )}
                     </div>
